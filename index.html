@@ -181,7 +181,7 @@ We can add secrets and variables in Settings — Secrets and variables — Actio
                             <p>
                                 This is because applications running on Linux require an additional start-up command pm2 serve /home/site/wwwroot --no-daemon. You can add this by going to your Azure App Service page - Settings - Configuration - General Settings - Startup Command, paste in pm2 serve /home/site/wwwroot --no-daemon and hit save.
                             </p>
-                    <img src="img/k12.png">
+                    <img src="img/k13.png">
                     <p>
                         PM2 is a NodeJS process manager that can serve and manage Node applications on Linux. PM2 is installed by default in Node.js containers in Azure App Service Linux, so we can use its CLI out of the box. More information on using PM2 on App Service Linux can be found here: https://azureossd.github.io/2022/02/22/Using-PM2-on-App-Service-Linux/
 Now go back to https://{name_of_your_app}.azurewebsites.net and we can see that our application is successfully served:
