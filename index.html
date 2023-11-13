@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link href="./style.css" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+
+   
+</head>
+<body>
+<section class="hadline">
+
+       <h1>How to deploy a Vite React app to Azure App Service using CI/CD Pipelines(GitHub Actions)?</h1>
+    </section>
+    <section>
+       <p>
+        What is Azure App Service <br>
+        Azure App Service is Azure’s Platform as a Service (PaaS) for hosting web apps, RESTful APIs, and mobile backends. It also comes with built-in DevOps capabilities, including continuous deployment using GitHub Actions.
+        There are three service offerings under Azure App Service: Web App, Web App + Database and Static Web App.
+       </p>
+       <img src="./img/k0.png">
+       <p>I’m using the Web App service, but you can choose which one suits your needs best.</p>
+       </section>
+       <section>
+      
+    <p>
+        Step by Step Guide
+Creating an app service on Azure using the Azure Portal<br>
+    1. Go to Home — Resource Group — Create.<br>
+Create a resource group named {name_of_your_app}_dev in your region, and click review + create.<br> This will be our development resource group. If needed, we can also create testing and production groups later.
+    </p>
+    <img src="img/k1.png">
+    </div>
+</section>
+<section>
+    <p>2. Go to Home — App Services — Create — Web App
+        Select your subscription, and the same Resource Group that we just created:</p>
+        <img src="img/k2.png">
+        <p>Then fill in instance details with the following:
+            Name: {name_of_your_app}
+            Publish: code
+            Runtime Stack: Node 18 LTS
+            Operating System: Linux or Windows depending on your own preference. I’m going with Linux here.
+            Region: the same as your resource group
+            Pricing plan: select your own pricing plan. For personal projects, the free F1 plan will be more than sufficient.</p>
+            <img src="img/k3.png">
+            <p>
+                After all the fields have been filled in, we can click next to configure deployment.
+If your application is running on Windows, you can set up continuous deployment straight away. Azure does not support this feature for apps running on the F1 plan on Linux. Don’t worry, we will set up continuous deployment after the app service has been created.
+            </p>
+            <img src="img/k4.png">
+            <p>The rest of the steps are optional and we can go straight to review + create. Once we click create, we can see that the App Servive deployment is in progress.</p>
+           <img src="img/k5.png">
+        </section>
+        <section>
+            <p>
+                3. After the deployment is complete, which should only take a few minutes, go to Home — App Services, and we should now see our new App Service and will be able to check it out.
+            </p>
+            <img src="img/k6.png">
+            <p>
+                Click on the Browse button, or go to this url: https://{name_of_your_app}.azurewebsites.net, and we should see the following page. It is a generic troubleshooting page from Azure indicating that they haven’t received any content for our web app.
+
+            </p>
+            <img src="img/k7.png">
+            <p>
+             
+So let’s now deploy our project and set up continuous deployment on Azure.<br>
+Project set up (skip if you already have a repo on GitHub)<br>
+If you don’t have a project set up already, this section demonstrates how you can set up your React app using Vite.<br>
+I personally prefer using Vite over Create React App, although Microsoft tutorials tend to use the latter.<br>
+In my experience, using a faster build tool such as Vite can speed up the development process,<br>
+which guarantees better developer experience and allows me to focus more on building the application.<br>
+Vite’s test runner Vitest is also blazingly fast, and gives faster feedback, which is especially a plus when doing Test Driven Development(TDD).<br>
+</p>
+<p>Continuous deployment using GitHub Actions</p>
+<p>
+
+Azure App Service integrates continuous deployment with various platforms such as BitBucket, GitHub, Local Git and Azure Repos.<br>
+There are two ways we can use Github Actions to deploy to Azure. One way to do this is using the app service deployment centre.<br>
+Azure has a comprehensive guide on how to use the deployment <br> 
+centre: https://learn.microsoft.com/en-us/azure/app-service/deploy-github-actions?tabs=applevel#use-the-deployment-center<br>
+Although using the Deployment Centre is quick and straight-forward, note that if this is your first deployment, Azure will auto-generate a workflow file, and push it to your branch of choice, which will consequently trigger a workflow run. The first run is going to fail because the workflow file’s deployment path is set to the root path(“.”), and GitHub Actions will try to deploy the whole source code, and not just the dist folder.<br>
+</p>
+<p>
+
+We will most likely want to modify other parts of the auto-generated file to, for example, avoid using deprecated actions in our workflow:
+            </p>
+            <img src="img/k8.png">
+            <p>I prefer to configure my own workflow file and then use the deployment centre if needed.
+                To do this, in our project root directory, create a .github/workflows/ folder and add the following workflow file named main_{name_of_your_app}.yml:</p>
+                <pre># Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
+                    # More GitHub Actions for Azure: https://github.com/Azure/actions
+                    name: Build and deploy Node.js app to Azure Web App - {name_of_your_app}
+                    # Run the workflow whenever change is pushed into the main branch
+                    on:
+                      push:
+                        branches:
+                          - main
+                      workflow_dispatch:
+                    # Optional: environment variables can be injected here
+                    # You can add these variables in your repository Settings 
+                    #- Secrets and variables - Actions - variables
+                    env:
+                      VITE_ENV_VAR1: ${{ env.VITE_ENV_VAR1 }}
+                      VITE_ENV_VAR2: ${{ env.VITE_ENV_VAR2 }}
+                    # There are two jobs in this workflow - build and deploy
+                    jobs:
+                     # Builds the application for production. 
+                     # You should configure this environment as close as possible to 
+                     the production environment,
+                     # e.g. using Ubuntu for Linux apps, using the same Node version
+                      build:
+                        runs-on: ubuntu-latest
+                        steps:
+                          - uses: actions/checkout@v3
+                          - name: Set up Node.js version
+                            uses: actions/setup-node@v3
+                            with:
+                              node-version: '18.x'
+                          - name: Install dependencies, build, and test
+                            run: |
+                              npm install
+                              npm run build --if-present
+                              npm run test --if-present
+                             # Other scripts if configured should be added here,
+                              such as linting, formating
+                          - name: Upload artifact for deployment job
+                            uses: actions/upload-artifact@v3
+                            with:
+                              name: node-app
+                              path: dist 
+                              # This should be your distribution path, not the root path
+                     
+                     # Deploy the application to Azure
+                      deploy:
+                        runs-on: ubuntu-latest
+                        needs: build
+                        environment:
+                          name: 'Production'
+                          url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+                        steps:
+                          - name: Download artifact from build job
+                            uses: actions/download-artifact@v3
+                            with:
+                              name: node-app
+                          - name: 'Deploy to Azure Web App'
+                            id: deploy-to-webapp
+                            uses: azure/webapps-deploy@v2
+                            with:
+                              app-name: {name_of_your_app}
+                              slot-name: 'Production'
+                              publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }} 
+                              # Publish profile should always be stored as secrets
+                               in your repository Settings 
+                              # - Secrets and variables - Actions - secrets
+                              package: .</pre>
+                              <p>Before committing this file to the main branch, we will need to configure secrets and environment variables (if any). Secrets are basically environment variables that are confidential. Once a secret is created, you can delete or overwrite it, but you will not be able to view it.
+                                The Azure Publish Profile holds confidential information that is required for deploying to Azure app service. It is sensitive data, so we will need to store it as a secret, which can then be used repeatedly in the workflow.
+                                To get the publish profile, we can go to the Overview page of our app service, and click Download Publish profile.
+                            </p>
+                            <img src="img/k9.png">
+                            <p >
+                                Copy and paste the content of the downloaded file, as it will be used in the next step as the value for our GitHub secret. We can now leave the Azure Portal and navigate back to the GitHub project page.
+We can add secrets and variables in Settings — Secrets and variables — Actions — secrets.
+                            </p>
+                            <img src="img/k10.png">
+                            <p>
+                                We will then create the following secret:
+                              AZUREAPPSERVICE_PUBLISHPROFILE={your_publish_profile_content} 
+                              Now that all the setup is finished, if we push the workflow file to the main branch, we should see a workflow run under GitHub’s Action tab.
+                              If the workflow has been successfully run, that means our React app has now been deployed to Azure.
+                              If your application is running on Windows, congratulations, you should now be able to see your application running by clicking on the url https://{name_of_your_app}.azurewebsites.net:
+                            </p>
+                            <img src="img/k11.png">
+                            <p>
+                                Last step if using Linux
+                               If you are using Linux and you have followed all the above steps correctly, you might be wondering why Azure is not recognising your content:
+                            </p>
+                            <img src="img/k12.png">
+                            <p>
+                                This is because applications running on Linux require an additional start-up command pm2 serve /home/site/wwwroot --no-daemon. You can add this by going to your Azure App Service page - Settings - Configuration - General Settings - Startup Command, paste in pm2 serve /home/site/wwwroot --no-daemon and hit save.
+                            </p>
+                    <img src="img/k12.png">
+                    <p>
+                        PM2 is a NodeJS process manager that can serve and manage Node applications on Linux. PM2 is installed by default in Node.js containers in Azure App Service Linux, so we can use its CLI out of the box. More information on using PM2 on App Service Linux can be found here: https://azureossd.github.io/2022/02/22/Using-PM2-on-App-Service-Linux/
+Now go back to https://{name_of_your_app}.azurewebsites.net and we can see that our application is successfully served:
+                    </p>
+                    <img src="img/k14.png">
+                    <p>
+                        There you have it, we now have a Vite + React application hosted on Azure App Service. We have also set up a CI/CD pipeline so that every time new code change is pushed into our main branch, GitHub Actions will run a workflow that tests, builds and deploys our app to Azure.
+                    </p>
+        </section>
+</body>
+</html>
